@@ -1,0 +1,15 @@
+"E:\IAR\software\arm\bin\armproc.dll" 
+
+"E:\IAR\software\arm\bin\armstlink2.dll" 
+
+"D:\SJWORK\purge\Purge_N2\EWARM\Purge_N2\Exe\Purge_N2.out" 
+
+--plugin="E:\IAR\software\arm\bin\armbat.dll" 
+
+--device_macro="E:\IAR\software\arm\config\debugger\ST\STM32F4xx.dmac" 
+
+--flash_loader="E:\IAR\software\arm\config\flashloader\ST\FlashSTM32F427xG.board" 
+
+
+
+
