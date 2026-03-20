@@ -5,6 +5,7 @@
 uint8_t req_frame[8] = {0}; //请求帧数组
 uint8_t resp_frame[8] = {0}; //响应帧数组
 uint16_t o2_raw = 0; //原始氧气浓度值（整数形式）
+uint8_t o2_dma_recv_buf[O2_DMA_BUF_SIZE] = {0}; //DMA接收缓冲区
 
 /**
  * @brief 计算CRC16校验码
@@ -73,10 +74,33 @@ float O2_Sensor_ReadConcentration(void)
     }
 
     //3.等待并接收响应帧
-    if(HAL_UART_Receive(O2_UART_HANDLER, resp_frame, 7, O2_TIMEOUT_MS) != HAL_OK)
+    // if(HAL_UART_Receive(O2_UART_HANDLER, resp_frame, 7, O2_TIMEOUT_MS) != HAL_OK)
+    // {
+    //     return o2_conc; //接收失败
+    // }
+
+    // 2. 清空DMA接收缓冲区（避免旧数据干扰）
+    memset(o2_dma_recv_buf, 0, O2_DMA_BUF_SIZE);
+
+    // 3. 启动DMA接收（替换原有HAL_UART_Receive）
+    if(HAL_UART_Receive_DMA(O2_UART_HANDLER, o2_dma_recv_buf, O2_DMA_BUF_SIZE) != HAL_OK)
     {
-        return o2_conc; //接收失败
+        return o2_conc; //DMA启动失败
     }
+
+    // 4. 轮询等待DMA接收完成（简单方式，替代中断）
+    uint32_t timeout = HAL_GetTick() + O2_TIMEOUT_MS;
+    while (HAL_UART_GetState(O2_UART_HANDLER) == HAL_UART_STATE_BUSY_RX)
+    {
+        if(HAL_GetTick() > timeout)
+        {
+            HAL_UART_Abort(O2_UART_HANDLER);
+            return o2_conc; //接收超时
+        }
+    }
+
+    // 5. 复制DMA接收数据到响应帧（保持原有校验逻辑不变）
+    memcpy(resp_frame, o2_dma_recv_buf, O2_DMA_BUF_SIZE);
 
     //4.校验响应帧合法性
     //检查地址、功能码、数据长度

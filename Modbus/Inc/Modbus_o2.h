@@ -15,6 +15,10 @@
 #define O2_UART_HANDLER &huart1 //使用的UART句柄(接RS485)
 #define O2_TIMEOUT_MS 1000 //UART通信超时时间
 
+/* 新增：DMA接收配置 */
+#define O2_DMA_BUF_SIZE 7  //响应帧长度（和原有接收长度一致）
+extern uint8_t o2_dma_recv_buf[O2_DMA_BUF_SIZE]; //DMA接收缓冲区
+
 /*函数声明*/
 //CRC16校验计算
 uint16_t Modbus_CRC16(uint8_t *data, uint16_t length);
