@@ -17,6 +17,10 @@ D:\SJWORK\purge\Purge_N2\EWARM/../Drivers/CMSIS/Include
 -I
 D:\SJWORK\purge\Purge_N2\Modbus\Inc
 -I
+D:\SJWORK\purge\Purge_N2\APP\Inc
+-I
+D:\SJWORK\purge\Purge_N2\APP\soft_i2c
+-I
 E:\IAR\software\arm\inc
 -I
 E:\IAR\software\arm\inc\c
@@ -32,6 +36,10 @@ D:\SJWORK\purge\Purge_N2\Drivers\CMSIS\Device\ST\STM32F4xx\Include
 D:\SJWORK\purge\Purge_N2\Drivers\CMSIS\Include
 -I
 D:\SJWORK\purge\Purge_N2\Modbus\Inc
+-I
+D:\SJWORK\purge\Purge_N2\APP\Inc
+-I
+D:\SJWORK\purge\Purge_N2\APP\soft_i2c
 -D__CHAR_BITS__=8
 -D__CHAR_MAX__=0xff
 -D__CHAR_MIN__=0

@@ -1,9 +1,16 @@
 ﻿D:\SJWORK\purge\Purge_N2\EWARM\Purge_N2\Obj\Purge_N2.pbd
+D:\SJWORK\purge\Purge_N2\EWARM\Purge_N2\Obj\adc.pbi
 D:\SJWORK\purge\Purge_N2\EWARM\Purge_N2\Obj\dma.pbi
 D:\SJWORK\purge\Purge_N2\EWARM\Purge_N2\Obj\gpio.pbi
 D:\SJWORK\purge\Purge_N2\EWARM\Purge_N2\Obj\main.pbi
 D:\SJWORK\purge\Purge_N2\EWARM\Purge_N2\Obj\Modbus_o2.pbi
+D:\SJWORK\purge\Purge_N2\EWARM\Purge_N2\Obj\My_ADC_ReadData.pbi
+D:\SJWORK\purge\Purge_N2\EWARM\Purge_N2\Obj\SFC.pbi
+D:\SJWORK\purge\Purge_N2\EWARM\Purge_N2\Obj\SHT85.pbi
+D:\SJWORK\purge\Purge_N2\EWARM\Purge_N2\Obj\SOFT_I2C.pbi
 D:\SJWORK\purge\Purge_N2\EWARM\Purge_N2\Obj\stm32f4xx_hal.pbi
+D:\SJWORK\purge\Purge_N2\EWARM\Purge_N2\Obj\stm32f4xx_hal_adc.pbi
+D:\SJWORK\purge\Purge_N2\EWARM\Purge_N2\Obj\stm32f4xx_hal_adc_ex.pbi
 D:\SJWORK\purge\Purge_N2\EWARM\Purge_N2\Obj\stm32f4xx_hal_cortex.pbi
 D:\SJWORK\purge\Purge_N2\EWARM\Purge_N2\Obj\stm32f4xx_hal_dma.pbi
 D:\SJWORK\purge\Purge_N2\EWARM\Purge_N2\Obj\stm32f4xx_hal_dma_ex.pbi
@@ -17,6 +24,9 @@ D:\SJWORK\purge\Purge_N2\EWARM\Purge_N2\Obj\stm32f4xx_hal_pwr.pbi
 D:\SJWORK\purge\Purge_N2\EWARM\Purge_N2\Obj\stm32f4xx_hal_pwr_ex.pbi
 D:\SJWORK\purge\Purge_N2\EWARM\Purge_N2\Obj\stm32f4xx_hal_rcc.pbi
 D:\SJWORK\purge\Purge_N2\EWARM\Purge_N2\Obj\stm32f4xx_hal_rcc_ex.pbi
+D:\SJWORK\purge\Purge_N2\EWARM\Purge_N2\Obj\stm32f4xx_hal_tim.pbi
+D:\SJWORK\purge\Purge_N2\EWARM\Purge_N2\Obj\stm32f4xx_hal_tim_ex.pbi
+D:\SJWORK\purge\Purge_N2\EWARM\Purge_N2\Obj\stm32f4xx_hal_timebase_tim.pbi
 D:\SJWORK\purge\Purge_N2\EWARM\Purge_N2\Obj\stm32f4xx_hal_uart.pbi
 D:\SJWORK\purge\Purge_N2\EWARM\Purge_N2\Obj\stm32f4xx_it.pbi
 D:\SJWORK\purge\Purge_N2\EWARM\Purge_N2\Obj\system_stm32f4xx.pbi

@@ -61,6 +61,22 @@ void Error_Handler(void);
 #define sys_led_GPIO_Port GPIOE
 #define work_led_Pin GPIO_PIN_13
 #define work_led_GPIO_Port GPIOC
+#define SHT85_SCL_Pin_Pin GPIO_PIN_10
+#define SHT85_SCL_Pin_GPIO_Port GPIOB
+#define SHT85_SDA_Pin_Pin GPIO_PIN_11
+#define SHT85_SDA_Pin_GPIO_Port GPIOB
+#define o_relay_pin_Pin GPIO_PIN_6
+#define o_relay_pin_GPIO_Port GPIOB
+#define o_air_inlet_pin_Pin GPIO_PIN_7
+#define o_air_inlet_pin_GPIO_Port GPIOB
+#define o_air_inlet2_pin_Pin GPIO_PIN_8
+#define o_air_inlet2_pin_GPIO_Port GPIOB
+#define o_vacuum_pin_Pin GPIO_PIN_9
+#define o_vacuum_pin_GPIO_Port GPIOB
+#define o_air_outlet_pin_Pin GPIO_PIN_0
+#define o_air_outlet_pin_GPIO_Port GPIOE
+#define o_py_relay_pin_Pin GPIO_PIN_1
+#define o_py_relay_pin_GPIO_Port GPIOE
 
 /* USER CODE BEGIN Private defines */
 

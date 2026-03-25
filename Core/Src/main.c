@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "adc.h"
 #include "dma.h"
 #include "usart.h"
 #include "gpio.h"
@@ -26,11 +27,24 @@
 /* USER CODE BEGIN Includes */
 #include "Modbus_o2.h"
 #include "stdio.h"
+#include "SHT85.h"
+//#include "app_cytc_sth85.h"
+#include "SFC.h"
+#include "My_ADC_ReadData.h"
+//#include "i2c_SHT85.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
 float o2_value;//全局变量存储氧气浓度值
+float *flow_value; //全局变量存储流量值
+//STH85_Data_t sth85_data; //全局变量存储STH85传感器数据
+//HAL_StatusTypeDef sth85_init_status; //全局变量存储STH85初始化状态
+float *temperature; //全局变量存储温度值
+float *humidity; //全局变量存储湿度值
+uint32_t* serialNumber; //全局变量存储STH85序列号
+HAL_StatusTypeDef ret;
+uint8_t status_flag = -1;
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -57,7 +71,11 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+// 用于在IAR调试器中观察的全局变量
+float debug_temperature = 0.0f;  // 调试用温度变量
+float debug_humidity = 0.0f;     // 调试用湿度变量
+uint32_t debug_serial_number = 0; // 调试用序列号变量
+//extern TH_Class_t TH_Class_SHT85;
 /* USER CODE END 0 */
 
 /**
@@ -92,7 +110,15 @@ int main(void)
   MX_DMA_Init();
   MX_USART1_UART_Init();
   MX_USART6_UART_Init();
+  MX_ADC1_Init();
+  MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
+  HAL_Delay(100); //等待I2C总线稳定
+  SHT85_Init(); //初始化STH85传感器
+   //将读取的温湿度数据存储到调试变量中，方便在IAR观察
+  //TH_Class_SHT85.init(); //调用SHT85初始化函数
+  float target_flow = 50.0f;  // 设定目标流量50L/min
+  ret = SFC_SetFlowValue(target_flow); //设定流量值
   
   /* USER CODE END 2 */
 
@@ -105,7 +131,12 @@ int main(void)
     /* USER CODE BEGIN 3 */
     //读取氧气浓度
     o2_value = O2_Sensor_ReadConcentration();
-
+    HAL_Delay(20);
+    SFC_ReadFlowValue(flow_value); //读取当前流量值
+    SHT85_Read_Result(); //读取STH85温湿度数据
+    Get_ADC_Data(); //获取ADC数据并计算压力和流量值
+    HAL_GPIO_TogglePin(work_led_GPIO_Port, work_led_Pin); //设备正常工作灯闪烁
+    HAL_Delay(1000); //1秒间隔
     // if(o2_value >= 0.0f)
     // {
     //   printf("Oxygen Concentration: %.2f%%\r\n", o2_value);
@@ -175,6 +206,28 @@ void SystemClock_Config(void)
 /* USER CODE END 4 */
 
 /**
+  * @brief  Period elapsed callback in non blocking mode
+  * @note   This function is called  when TIM10 interrupt took place, inside
+  * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
+  * a global variable "uwTick" used as application time base.
+  * @param  htim : TIM handle
+  * @retval None
+  */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+  /* USER CODE BEGIN Callback 0 */
+
+  /* USER CODE END Callback 0 */
+  if (htim->Instance == TIM10)
+  {
+    HAL_IncTick();
+  }
+  /* USER CODE BEGIN Callback 1 */
+
+  /* USER CODE END Callback 1 */
+}
+
+/**
   * @brief  This function is executed in case of error occurrence.
   * @retval None
   */
@@ -185,6 +238,7 @@ void Error_Handler(void)
   __disable_irq();
   while (1)
   {
+    HAL_GPIO_WritePin(work_led_GPIO_Port, work_led_Pin, GPIO_PIN_RESET);//设备运行故障，work灯常亮
   }
   /* USER CODE END Error_Handler_Debug */
 }
