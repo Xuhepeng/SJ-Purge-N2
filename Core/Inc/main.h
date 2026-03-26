@@ -79,7 +79,16 @@ void Error_Handler(void);
 #define o_py_relay_pin_GPIO_Port GPIOE
 
 /* USER CODE BEGIN Private defines */
-
+#define air_inlet1_open() HAL_GPIO_WritePin(o_air_inlet_pin_GPIO_Port, o_air_inlet_pin_Pin, GPIO_PIN_RESET)
+#define air_inlet1_close() HAL_GPIO_WritePin(o_air_inlet_pin_GPIO_Port, o_air_inlet_pin_Pin, GPIO_PIN_SET)
+#define air_inlet2_open() HAL_GPIO_WritePin(o_air_inlet2_pin_GPIO_Port, o_air_inlet2_pin_Pin, GPIO_PIN_RESET)
+#define air_inlet2_close() HAL_GPIO_WritePin(o_air_inlet2_pin_GPIO_Port, o_air_inlet2_pin_Pin, GPIO_PIN_SET)
+#define vacuum_open() HAL_GPIO_WritePin(o_vacuum_pin_GPIO_Port, o_vacuum_pin_Pin, GPIO_PIN_RESET)
+#define vacuum_close() HAL_GPIO_WritePin(o_vacuum_pin_GPIO_Port, o_vacuum_pin_Pin, GPIO_PIN_SET)
+#define air_outlet_open() HAL_GPIO_WritePin(o_air_outlet_pin_GPIO_Port, o_air_outlet_pin_Pin, GPIO_PIN_RESET)
+#define air_outlet_close() HAL_GPIO_WritePin(o_air_outlet_pin_GPIO_Port, o_air_outlet_pin_Pin, GPIO_PIN_SET)
+#define py_relay_on() HAL_GPIO_WritePin(o_py_relay_pin_GPIO_Port, o_py_relay_pin_Pin, GPIO_PIN_RESET)
+#define py_relay_off() HAL_GPIO_WritePin(o_py_relay_pin_GPIO_Port, o_py_relay_pin_Pin, GPIO_PIN_SET)
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

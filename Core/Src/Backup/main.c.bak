@@ -135,7 +135,7 @@ int main(void)
     SFC_ReadFlowValue(flow_value); //读取当前流量值
     SHT85_Read_Result(); //读取STH85温湿度数据
     Get_ADC_Data(); //获取ADC数据并计算压力和流量值
-    HAL_GPIO_TogglePin(work_led_GPIO_Port, work_led_Pin); //工作Led闪烁
+    HAL_GPIO_TogglePin(work_led_GPIO_Port, work_led_Pin); //设备正常工作灯闪烁
     HAL_Delay(1000); //1秒间隔
     // if(o2_value >= 0.0f)
     // {
@@ -238,6 +238,7 @@ void Error_Handler(void)
   __disable_irq();
   while (1)
   {
+    HAL_GPIO_WritePin(work_led_GPIO_Port, work_led_Pin, GPIO_PIN_RESET);//设备运行故障，work灯常亮
   }
   /* USER CODE END Error_Handler_Debug */
 }
