@@ -1,0 +1,112 @@
+协议格式需求
+1、查询指令 Host->Device
+格式：
+FSR FC=xx<CR><LF>
+FC=0:查询状态
+回应：FSD=0 STATUS=xx MODE=xx FAULT=xx CYCLE=xx<CR><LF>
+FC=1:查询各个传感器状态
+回应：FSD=1 O2=xx FLOW=xx AFLOW=xx INP=xx OUTP=xx T=xx H=xx<CR><LF>
+FC=2:查询CONFIG信息
+回应：FSD=2 FILLFLOW=80.00 RUNFLOW=50.00 TARGETO2=5.00 TARGETHUMI=10.00 POS_PRESS_MAX=7.00 POS_PRESS_MIN=5.00 NEG_PRESS_MAX=-0.70 NEG_PRESS_MIN=-0.90 EXTERNAL_OUTPUT=0 GAS_TYPE=N2<CR><LF>
+
+2、控制指令 Host->Device
+格式：
+2.1 HCS START_PURGE POD<CR><LF>          给POD腔体充气
+回应：HCA XX<CR><LF>                  
+XX:ALARM                             指令拒绝，设备处于ALARM状态
+XX:OK                                指令执行成功
+XX:BUSY                              设备忙
+XX:DENEID                            设备拒绝,指令未定义
+2.2 HCS START_PURGE MICRO<CR><LF>         给微环境充气
+回应：HCA XX<CR><LF>                  
+XX:ALARM                             指令拒绝，设备处于ALARM状态
+XX:OK                                指令执行成功
+XX:BUSY                              设备忙
+XX:DENEID                            设备拒绝,指令未定义
+2.3 HCS STOP_PURGE <CR><LF>              停止充气
+回应：HCA XX<CR><LF> 
+XX:ALARM                             指令拒绝，设备处于ALARM状态
+XX:OK                                指令执行成功
+XX:BUSY                              设备忙
+XX:DENEID                            设备拒绝,指令未定义
+
+3、设置参数指令 Host->Device
+格式：
+3.1 ECS XX=Data<CR><LF>             给指定参数设置值
+XX:FILLFLOW                         给腔体充气流量
+XX:RUNFLOW                          运行流量
+XX:TARGETO2                         目标氧气浓度
+XX:TARGETHUMI                       目标湿度
+XX:POS_PRESS_MAX                    正压上限
+XX:POS_PRESS_MIN                    正压下限
+XX:NEG_PRESS_MAX                    负压上限
+XX:NEG_PRESS_MIN                    负压下限
+XX:EXTERNAL_OUTPUT                  外部输出开关
+XX:GAS_TYPE                         压缩空气类型
+回应：ECA XX<CR><LF>
+XX:OK                                指令执行成功
+XX:BUSY                              设备忙
+XX:ALARM                             指令拒绝，设备处于ALARM状态
+
+3.2 ECR XX<CR><LF>                  查询指定参数值
+XX:FILLFLOW                         给腔体充气流量
+XX:RUNFLOW                          运行流量
+XX:TARGETO2                         目标氧气浓度
+XX:TARGETHUMI                       目标湿度
+XX:POS_PRESS_MAX                    正压上限
+XX:POS_PRESS_MIN                    正压下限
+XX:NEG_PRESS_MAX                    负压上限
+XX:NEG_PRESS_MIN                    负压下限
+XX:EXTERNAL_OUTPUT                  外部输出开关
+XX:GAS_TYPE                         压缩空气类型
+回应：ECD XX=Data<CR><LF>
+XX:FILLFLOW                         给腔体充气流量
+XX:RUNFLOW                          运行流量
+XX:TARGETO2                         目标氧气浓度
+XX:TARGETHUMI                       目标湿度
+XX:POS_PRESS_MAX                    正压上限
+XX:POS_PRESS_MIN                    正压下限
+XX:NEG_PRESS_MAX                    负压上限
+XX:NEG_PRESS_MIN                    负压下限
+XX:EXTERNAL_OUTPUT                  外部输出开关
+XX:GAS_TYPE                         压缩空气类型
+
+4、设置事件是否上报指令 Host->Device
+格式：
+EDER XX<CR><LF>                     
+XX:ON                               开启事件上报
+XX:OFF                              关闭事件上报
+回应：EERA XX<CR><LF>
+XX:OK                                指令执行成功
+XX:BUSY                              设备忙
+XX:ALARM                             指令拒绝，设备处于ALARM状态
+
+5、报警事件上报 Device->Host
+格式：
+ARS WARNING MSG ALID=xx<CR><LF>
+MSG:POS_PRESS_ABNORMAL              正压异常
+MSG:NEG_PRESS_ABNORMAL              负压异常
+MSG:O2_ABNORMAL                     氧气浓度异常
+MSG:TEMP_HUMI_ABNORMAL
+MSG:FLOW_ABNORMAL                   进气流量异常
+MSG:AFLOW_ABNORMAL                  出气流量异常
+MSG:PURGE_TIMEOUT                   气体置换超时
+MSG:DEVICE_FAULT                    设备故障
+xx:| `0x00000001` |控制流程兜底故障 |
+xx:| `0x00000002` | O2 传感器长时间无有效更新 |
+xx:| `0x00000004` | 流量反馈长时间无效 |
+xx:| `0x00000008` | 温湿度传感器长时间无效 |
+xx:| `0x00000010` | 正压侧超出设定范围 |
+xx:| `0x00000020` | 负压侧超出设定范围 |
+xx:| `0x00000040` | RUN 阶段 O2 再次升高 |
+xx:| `0x00000080` | 置换流程超时 |
+
+6、事件上报 Device->Host
+格式：
+AERS MSG<CR><LF>
+MSG:START_PURGE                     充气开始
+MSG:CMPL_PURGE_MIC                  微环境充气完成
+MSG:CMPL_PURGE_POD                  POD腔体充气完成
+MSG:STOP_PURGE                      充气停止
+MSG:POWER_UP                        设备上电
+MSG:CMPL_SET                        参数设置完成

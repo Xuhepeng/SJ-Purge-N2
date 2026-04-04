@@ -21,6 +21,12 @@ D:\SJWORK\purge\Purge_N2\APP\Inc
 -I
 D:\SJWORK\purge\Purge_N2\APP\soft_i2c
 -I
+D:\SJWORK\purge\Purge_N2\EWARM/../Middlewares/Third_Party/FreeRTOS/Source/include
+-I
+D:\SJWORK\purge\Purge_N2\EWARM/../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2
+-I
+D:\SJWORK\purge\Purge_N2\EWARM/../Middlewares/Third_Party/FreeRTOS/Source/portable/IAR/ARM_CM4F
+-I
 E:\IAR\software\arm\inc
 -I
 E:\IAR\software\arm\inc\c
@@ -40,6 +46,12 @@ D:\SJWORK\purge\Purge_N2\Modbus\Inc
 D:\SJWORK\purge\Purge_N2\APP\Inc
 -I
 D:\SJWORK\purge\Purge_N2\APP\soft_i2c
+-I
+D:\SJWORK\purge\Purge_N2\Middlewares\Third_Party\FreeRTOS\Source\include
+-I
+D:\SJWORK\purge\Purge_N2\Middlewares\Third_Party\FreeRTOS\Source\CMSIS_RTOS_V2
+-I
+D:\SJWORK\purge\Purge_N2\Middlewares\Third_Party\FreeRTOS\Source\portable\IAR\ARM_CM4F
 -D__CHAR_BITS__=8
 -D__CHAR_MAX__=0xff
 -D__CHAR_MIN__=0

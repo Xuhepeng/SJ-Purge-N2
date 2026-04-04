@@ -72,7 +72,7 @@ float O2_Sensor_ReadConcentration(void)
     {
         return o2_conc; //发送失败
     }
-
+    //memset(resp_frame, 0, 8); //清空响应帧
     //3.等待并接收响应帧
     // if(HAL_UART_Receive(O2_UART_HANDLER, resp_frame, 7, O2_TIMEOUT_MS) != HAL_OK)
     // {
@@ -81,7 +81,7 @@ float O2_Sensor_ReadConcentration(void)
 
     // 2. 清空DMA接收缓冲区（避免旧数据干扰）
     memset(o2_dma_recv_buf, 0, O2_DMA_BUF_SIZE);
-
+    memset(resp_frame,0,8);
     // 3. 启动DMA接收（替换原有HAL_UART_Receive）
     if(HAL_UART_Receive_DMA(O2_UART_HANDLER, o2_dma_recv_buf, O2_DMA_BUF_SIZE) != HAL_OK)
     {

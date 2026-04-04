@@ -53,17 +53,16 @@ void MX_GPIO_Init(void)
   __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(sys_led_GPIO_Port, sys_led_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOE, sys_led_Pin|o_air_outlet_pin_Pin|o_py_relay_pin_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(work_led_GPIO_Port, work_led_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, SHT85_SCL_Pin_Pin|SHT85_SDA_Pin_Pin|o_relay_pin_Pin|o_air_inlet_pin_Pin
-                          |o_air_inlet2_pin_Pin|o_vacuum_pin_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(GPIOB, SHT85_SCL_Pin_Pin|SHT85_SDA_Pin_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOE, o_air_outlet_pin_Pin|o_py_relay_pin_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(GPIOB, o_relay_pin_Pin|o_air_inlet_pin_Pin|o_air_inlet2_pin_Pin|o_vacuum_pin_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : sys_led_Pin o_air_outlet_pin_Pin o_py_relay_pin_Pin */
   GPIO_InitStruct.Pin = sys_led_Pin|o_air_outlet_pin_Pin|o_py_relay_pin_Pin;

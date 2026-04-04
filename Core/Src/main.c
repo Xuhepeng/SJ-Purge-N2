@@ -26,12 +26,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "Modbus_o2.h"
-#include "stdio.h"
-#include "SHT85.h"
-//#include "app_cytc_sth85.h"
-#include "SFC.h"
-#include "My_ADC_ReadData.h"
+
 //#include "i2c_SHT85.h"
 /* USER CODE END Includes */
 
@@ -61,7 +56,7 @@ uint8_t status_flag = -1;
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-
+//static PurgeHostComm_t g_host_comm;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -115,12 +110,6 @@ int main(void)
   MX_ADC1_Init();
   MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
-  HAL_Delay(100); //等待I2C总线稳定
-  SHT85_Init(); //初始化STH85传感器
-   //将读取的温湿度数据存储到调试变量中，方便在IAR观察
-  //TH_Class_SHT85.init(); //调用SHT85初始化函数
-  float target_flow = 50.0f;  // 设定目标流量50L/min
-  ret = SFC_SetFlowValue(target_flow); //设定流量值
   
   /* USER CODE END 2 */
 
@@ -140,22 +129,10 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    //读取氧气浓度
-    o2_value = O2_Sensor_ReadConcentration();
-    HAL_Delay(20);
-    SFC_ReadFlowValue(flow_value); //读取当前流量值
-    SHT85_Read_Result(); //读取STH85温湿度数据
-    Get_ADC_Data(); //获取ADC数据并计算压力和流量值
-    HAL_GPIO_TogglePin(work_led_GPIO_Port, work_led_Pin); //设备正常工作灯闪烁
-    HAL_Delay(1000); //1秒间隔
-    // if(o2_value >= 0.0f)
-    // {
-    //   printf("Oxygen Concentration: %.2f%%\r\n", o2_value);
-    // }
-    // else
-    // {
-    //   printf("Failed to read oxygen concentration\r\n");
-    // }
+    // PurgeHostComm_Process(&g_host_comm);
+    // PurgeControl_Process(HAL_GetTick());
+    
+    HAL_Delay(500); //1秒间隔
   }
   /* USER CODE END 3 */
 }

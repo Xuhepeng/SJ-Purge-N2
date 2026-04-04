@@ -61,7 +61,7 @@ float Get_Inlet_Pressure_Bar(void)
 {
     float adc_value = ADC_Read_Filter(INTAKE_PRESSURE_ADC_CHANNEL); //读取进气压力ADC值
     //1.把ADC转换成ADC引脚的实际电压
-    float adc_voltage = (float)adc_value * ADC_VREF / ADC_RESOLUTION; //ADC电压值
+    float adc_voltage = (float)adc_value*1.1f * ADC_VREF / ADC_RESOLUTION; //ADC电压值
 
     //2.还原成传感器原始输出（硬件有分压）
     float sensor_voltage = adc_voltage * VOLTAGE_DIVIDER; //传感器输出电压
@@ -80,12 +80,12 @@ float Get_Outlet_Pressure_Bar(void)
 {
     float adc_value = ADC_Read_Filter(EXHAUST_PRESSURE_ADC_CHANNEL); //读取出气压力ADC值
     //1.把ADC转换成ADC引脚的实际电压
-    float adc_voltage = (float)adc_value * ADC_VREF / ADC_RESOLUTION; //ADC电压值
+    float adc_voltage = (float)adc_value*1.1f * ADC_VREF / ADC_RESOLUTION; //ADC电压值
     //2.还原成传感器原始输出（硬件有分压）
     float sensor_voltage = adc_voltage * VOLTAGE_DIVIDER; //传感器输出电压
     //3.0-10v线性映射到-1-+1bar
     out_pressure = OUT_P_MIN_BAR+(sensor_voltage / 10.0f) * (OUT_P_MAX_BAR - OUT_P_MIN_BAR);
-    return 0.0f; //暂时不用出气压力传感器
+    return out_pressure; 
 }
 
 /**
@@ -97,7 +97,7 @@ float Get_Flow_LPM(void)
     //通道：PA5 = ADC1_IN5
     float adc_value = ADC_Read_Filter(ADC_CHANNEL_5); //读取流量计ADC值
     //1.把ADC转换成ADC引脚的实际电压
-    float adc_voltage = (float)adc_value * ADC_VREF / ADC_RESOLUTION; //ADC电压值
+    float adc_voltage = (float)adc_value*1.1f * ADC_VREF / ADC_RESOLUTION; //ADC电压值
     //2.还原成传感器原始输出（硬件有分压）
     float sensor_voltage = adc_voltage * VOLTAGE_DIVIDER; //传感器输出电压
     //3.0-10v线性映射到2-200L/min
@@ -107,6 +107,19 @@ float Get_Flow_LPM(void)
     
     return Flow_value;
 }
+
+float Apply_Calib(float raw, Calib_TypeDef *calib)
+{
+    return raw * calib->k + calib->b;
+}
+
+//零点校准
+void Calib_Zero(Calib_TypeDef *calib, float current_raw, float target_true)
+{
+    calib->b = target_true - current_raw;
+    calib->k = 1.0f;
+}
+
 
 void Get_ADC_Data(void)
 {

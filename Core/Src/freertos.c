@@ -45,6 +45,7 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN Variables */
+static PurgeHostComm_t g_host_comm;
 
 /* USER CODE END Variables */
 /* Definitions for defaultTask */
@@ -54,6 +55,20 @@ const osThreadAttr_t defaultTask_attributes = {
   .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
+/* Definitions for myTask02 */
+osThreadId_t myTask02Handle;
+const osThreadAttr_t myTask02_attributes = {
+  .name = "myTask02",
+  .stack_size = 512 * 4,
+  .priority = (osPriority_t) osPriorityNormal,
+};
+/* Definitions for myTask03 */
+osThreadId_t myTask03Handle;
+const osThreadAttr_t myTask03_attributes = {
+  .name = "myTask03",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
@@ -61,6 +76,8 @@ const osThreadAttr_t defaultTask_attributes = {
 /* USER CODE END FunctionPrototypes */
 
 void StartDefaultTask(void *argument);
+void Analyse_HostCMDTask(void *argument);
+void System_ProcessTask(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -71,7 +88,8 @@ void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
   */
 void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN Init */
-
+   PurgeControl_Init();
+  PurgeHostComm_Init(&g_host_comm);
   /* USER CODE END Init */
 
   /* USER CODE BEGIN RTOS_MUTEX */
@@ -93,6 +111,12 @@ void MX_FREERTOS_Init(void) {
   /* Create the thread(s) */
   /* creation of defaultTask */
   defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
+
+  /* creation of myTask02 */
+  myTask02Handle = osThreadNew(Analyse_HostCMDTask, NULL, &myTask02_attributes);
+
+  /* creation of myTask03 */
+  myTask03Handle = osThreadNew(System_ProcessTask, NULL, &myTask03_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -117,9 +141,48 @@ void StartDefaultTask(void *argument)
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+    HAL_GPIO_TogglePin(work_led_GPIO_Port, work_led_Pin); //设备正常工作灯闪烁
+    osDelay(1000);
   }
   /* USER CODE END StartDefaultTask */
+}
+
+/* USER CODE BEGIN Header_Analyse_HostCMDTask */
+/**
+* @brief Function implementing the myTask02 thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_Analyse_HostCMDTask */
+void Analyse_HostCMDTask(void *argument)
+{
+  /* USER CODE BEGIN Analyse_HostCMDTask */
+  /* Infinite loop */
+  for(;;)
+  {
+    PurgeHostComm_Process(&g_host_comm);
+    osDelay(10);
+  }
+  /* USER CODE END Analyse_HostCMDTask */
+}
+
+/* USER CODE BEGIN Header_System_ProcessTask */
+/**
+* @brief Function implementing the myTask03 thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_System_ProcessTask */
+void System_ProcessTask(void *argument)
+{
+  /* USER CODE BEGIN System_ProcessTask */
+  /* Infinite loop */
+  for(;;)
+  {
+    PurgeControl_Process(HAL_GetTick());
+    osDelay(100);
+  }
+  /* USER CODE END System_ProcessTask */
 }
 
 /* Private application code --------------------------------------------------*/
