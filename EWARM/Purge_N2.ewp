@@ -351,9 +351,9 @@
                     <state>$PROJ_DIR$/../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy</state>
                     <state>$PROJ_DIR$/../Drivers/CMSIS/Device/ST/STM32F4xx/Include</state>
                     <state>$PROJ_DIR$/../Drivers/CMSIS/Include</state>
-                    <state>D:\SJWORK\purge\Purge_N2\Modbus\Inc</state>
-                    <state>D:\SJWORK\purge\Purge_N2\APP\Inc</state>
-                    <state>D:\SJWORK\purge\Purge_N2\APP\soft_i2c</state>
+                    <state>$PROJ_DIR$\..\Modbus\Inc</state>
+                    <state>$PROJ_DIR$\..\APP\Inc</state>
+                    <state>$PROJ_DIR$\..\APP\soft_i2c</state>
                     <state>$PROJ_DIR$/../Middlewares/Third_Party/FreeRTOS/Source/include</state>
                     <state>$PROJ_DIR$/../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2</state>
                     <state>$PROJ_DIR$/../Middlewares/Third_Party/FreeRTOS/Source/portable/IAR/ARM_CM4F</state>
@@ -1067,10 +1067,10 @@
                 <name>$PROJ_DIR$\..\APP\Src\My_ADC_ReadData.c</name>
             </file>
             <file>
-                <name>$PROJ_DIR$\..\APP\Src\Purge_Control.c</name>
+                <name>$PROJ_DIR$\..\APP\Src\Purge_ConfigStore.c</name>
             </file>
             <file>
-                <name>$PROJ_DIR$\..\APP\Src\Purge_ConfigStore.c</name>
+                <name>$PROJ_DIR$\..\APP\Src\Purge_Control.c</name>
             </file>
             <file>
                 <name>$PROJ_DIR$\..\APP\Src\Purge_HostComm.c</name>

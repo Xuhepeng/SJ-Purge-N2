@@ -15,11 +15,11 @@ D:\SJWORK\purge\Purge_N2\EWARM/../Drivers/CMSIS/Device/ST/STM32F4xx/Include
 -I
 D:\SJWORK\purge\Purge_N2\EWARM/../Drivers/CMSIS/Include
 -I
-D:\SJWORK\purge\Purge_N2\Modbus\Inc
+D:\SJWORK\purge\Purge_N2\EWARM\..\Modbus\Inc
 -I
-D:\SJWORK\purge\Purge_N2\APP\Inc
+D:\SJWORK\purge\Purge_N2\EWARM\..\APP\Inc
 -I
-D:\SJWORK\purge\Purge_N2\APP\soft_i2c
+D:\SJWORK\purge\Purge_N2\EWARM\..\APP\soft_i2c
 -I
 D:\SJWORK\purge\Purge_N2\EWARM/../Middlewares/Third_Party/FreeRTOS/Source/include
 -I

@@ -134,10 +134,14 @@ void PurgeControl_MicroCavity(void)
     g_purge_ctrl.cavity = Microenvironment;
 }
 
-/* 主机发 STOP 后，只是先置位命令标志 */
+/*
+ * STOP 需要同步生效。
+ * 否则通信层已经回复 HCA OK，但控制状态还没切回 STANDBY，
+ * 紧跟着来的下一条 START_PURGE 会因为看到旧状态而返回 HCA BUSY。
+ */
 void PurgeControl_Stop(void)
 {
-    g_purge_ctrl.cmd_stop = 1U;
+    PurgeControl_EnterStandby();
 }
 
 /* 主机发 RESET 后，只是先置位复位命令标志 */
@@ -203,12 +207,12 @@ static void PurgeControl_LoadDefaultConfig(void)
     g_purge_ctrl.run_exit_humidity_percent = 10.0f; //允许从稳定进入运行的湿度条件：低于该值才允许进入 RUN
     g_purge_ctrl.max_inlet_pressure_bar = 7.0f;     //进气压力上限，单位 Bar
     g_purge_ctrl.min_inlet_pressure_bar = 5.0f;     //进气压力下限，单位 Bar
-    g_purge_ctrl.max_outlet_pressure_bar = -0.06f;   //出气压力上限，单位 Bar
+    g_purge_ctrl.max_outlet_pressure_bar = -0.03f;   //出气压力上限，单位 Bar
     g_purge_ctrl.min_outlet_pressure_bar = -0.9f;   //出气压力下限，单位 Bar
     g_purge_ctrl.sensor_period_ms = 300U;
     g_purge_ctrl.control_period_ms = 50U;
     g_purge_ctrl.evacuate_time_ms = 8000U;
-    g_purge_ctrl.fill_time_ms = 40000U;
+    g_purge_ctrl.fill_time_ms = 300000U;  
     g_purge_ctrl.stabilize_time_ms = 5000U;
 
     /* 允许 O2 偶尔几轮没回包 */
@@ -291,6 +295,14 @@ static void PurgeControl_ReadSensors(uint32_t now_ms)
 static void PurgeControl_UpdateFaults(uint32_t now_ms)
 {
     uint32_t fault_code = 0UL;
+    uint8_t micro_ignore_quality;
+
+    /*
+     * MICRO 腔体的 purge 流程不再依赖 O2 和湿度来判定流程是否合格。
+     * 因此后面的 O2/湿度相关 fault 也需要一起绕开，
+     * 避免 MICRO 流程因为这些非关注量而被提前打断。
+     */
+    micro_ignore_quality = (g_purge_ctrl.cavity == Microenvironment) ? 1U : 0U;
 
     /* 流量反馈超过允许时间没更新，才认为失效 */
     if ((g_purge_ctrl.flow_valid != 0U) &&
@@ -317,7 +329,8 @@ static void PurgeControl_UpdateFaults(uint32_t now_ms)
      * 上电初期也要给宽限期。
      * 例如 O2 设备第一次成功回包前，不能因为 now_ms 很小就立刻报码。
      */
-    if ((g_purge_ctrl.gas_type == N2) &&
+    if ((micro_ignore_quality == 0U) &&
+        (g_purge_ctrl.gas_type == N2) &&
         (g_purge_ctrl.o2_valid == 0U) &&
         (now_ms >= g_purge_ctrl.o2_valid_timeout_ms))
     {
@@ -335,7 +348,8 @@ static void PurgeControl_UpdateFaults(uint32_t now_ms)
     }
     
 
-    if ((g_purge_ctrl.temp_humi_valid == 0U) &&
+    if ((micro_ignore_quality == 0U) &&
+        (g_purge_ctrl.temp_humi_valid == 0U) &&
         (now_ms >= g_purge_ctrl.temp_humi_valid_timeout_ms))
     {
         fault_code |= PURGE_CTRL_FAULT_TEMP_HUMI_INVALID;
@@ -366,7 +380,7 @@ static void PurgeControl_UpdateFaults(uint32_t now_ms)
      * 让真空支路和传感器有机会进入正常工作区间后再判断是否越界。
      */
     if (((g_purge_ctrl.state == PURGE_CTRL_STATE_FILL) || (g_purge_ctrl.state == PURGE_CTRL_STATE_RUN)) &&
-        (PurgeControl_IsTimeout(now_ms, g_purge_ctrl.state_enter_tick, 1000U) != 0U))
+        (PurgeControl_IsTimeout(now_ms, g_purge_ctrl.state_enter_tick, 2000U) != 0U))
     {
         if ((g_purge_ctrl.outlet_pressure_bar < g_purge_ctrl.min_outlet_pressure_bar) ||
             (g_purge_ctrl.outlet_pressure_bar > g_purge_ctrl.max_outlet_pressure_bar))
@@ -388,7 +402,8 @@ static void PurgeControl_UpdateFaults(uint32_t now_ms)
     }
 
     /* O2 超限只在 RUN 阶段作为运行故障处理 */
-    if ((g_purge_ctrl.state == PURGE_CTRL_STATE_RUN) &&
+    if ((micro_ignore_quality == 0U) &&
+        (g_purge_ctrl.state == PURGE_CTRL_STATE_RUN) &&
         (s_run_adjust_active != 0U) &&
         (PurgeControl_IsTimeout(now_ms, s_run_adjust_start_tick, s_run_adjust_timeout_ms) != 0U))
     {
@@ -448,12 +463,22 @@ static void PurgeControl_UpdateStateMachine(uint32_t now_ms)
             {
                 PurgeControl_SetState(PURGE_CTRL_STATE_STANDBY, now_ms);
             }
-            else if ((((g_purge_ctrl.gas_type == N2) &&
-                       (g_purge_ctrl.o2_valid != 0U) &&
-                       (g_purge_ctrl.o2_percent <= g_purge_ctrl.run_enter_o2_percent)) ||
-                      (g_purge_ctrl.gas_type == XCDA)) &&
-                     (g_purge_ctrl.humidity_percent <= g_purge_ctrl.run_exit_humidity_percent) &&
-                     (PurgeControl_IsTimeout(now_ms, g_purge_ctrl.state_enter_tick, g_purge_ctrl.stabilize_time_ms) != 0U))
+            /*
+             * POD 流程仍按气体质量条件决定何时完成置换：
+             * - N2：同时满足 O2 和湿度阈值
+             * - XCDA：只看湿度
+             *
+             * MICRO 流程不再判断 O2 和湿度，
+             * 只要置换阶段维持到最小工艺时间就进入 RUN。
+             */
+            else if (((g_purge_ctrl.cavity == Microenvironment) &&
+                      (PurgeControl_IsTimeout(now_ms, g_purge_ctrl.state_enter_tick, g_purge_ctrl.stabilize_time_ms) != 0U)) ||
+                     ((((g_purge_ctrl.gas_type == N2) &&
+                        (g_purge_ctrl.o2_valid != 0U) &&
+                        (g_purge_ctrl.o2_percent <= g_purge_ctrl.run_enter_o2_percent)) ||
+                       (g_purge_ctrl.gas_type == XCDA)) &&
+                      (g_purge_ctrl.humidity_percent <= g_purge_ctrl.run_exit_humidity_percent) &&
+                      (PurgeControl_IsTimeout(now_ms, g_purge_ctrl.state_enter_tick, g_purge_ctrl.stabilize_time_ms) != 0U)))
             {
                 PurgeControl_SetState(PURGE_CTRL_STATE_RUN, now_ms);
             }
@@ -544,6 +569,25 @@ static float PurgeControl_CalcRunCommandFlow(uint32_t now_ms)
 {
     float target_flow = g_purge_ctrl.run_flow_lpm;
     uint8_t quality_abnormal = 0U;
+
+    /*
+     * MICRO 腔体在 RUN 阶段继续保持置换流量，
+     * 不再切换到 run_flow_lpm，也不参与 O2/湿度动态补偿。
+     * 这样可以保证 MICRO 一直以置换工况运行。
+     */
+    if (g_purge_ctrl.cavity == Microenvironment)
+    {
+        target_flow = g_purge_ctrl.fill_flow_lpm;
+        if (target_flow > SFC_FLOW_MAX)
+        {
+            target_flow = SFC_FLOW_MAX;
+        }
+
+        s_run_adjust_active = 0U;
+        s_run_adjust_start_tick = 0U;
+        s_run_command_flow_lpm = target_flow;
+        return target_flow;
+    }
 
     if ((g_purge_ctrl.flow_valid != 0U) &&
         (g_purge_ctrl.analog_flow_lpm > g_purge_ctrl.flow_feedback_lpm))

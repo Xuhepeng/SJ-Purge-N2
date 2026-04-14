@@ -733,19 +733,22 @@ static void PurgeHostComm_ProcessAsciiEvents(PurgeHostComm_t *comm, uint32_t now
     }
 
     /*
-     * 完成判据与协议手册保持一致：
-     * 1. 必须进入 RUN
-     * 2. 湿度达到目标
-     * 3. N2 模式还需 O2 达到目标
-     * 4. XCDA 模式仅检查湿度
+     * 完成事件与控制层判据保持一致：
+     * 1. POD：
+     *    - N2 需要同时满足 O2 和湿度阈值
+     *    - XCDA 只检查湿度
+     * 2. MICRO：
+     *    - 不再判断 O2 和湿度
+     *    - 只要流程已经进入 RUN，就视为置换完成
      */
     if ((g_purge_ctrl.state == PURGE_CTRL_STATE_RUN) &&
-        (g_purge_ctrl.temp_humi_valid != 0U) &&
-        (g_purge_ctrl.humidity_percent <= g_purge_ctrl.run_exit_humidity_percent) &&
-        (((g_purge_ctrl.gas_type == N2) &&
-          (g_purge_ctrl.o2_valid != 0U) &&
-          (g_purge_ctrl.o2_percent <= g_purge_ctrl.run_enter_o2_percent)) ||
-         (g_purge_ctrl.gas_type == XCDA)))
+        (((g_purge_ctrl.cavity == Microenvironment)) ||
+         ((g_purge_ctrl.temp_humi_valid != 0U) &&
+          (g_purge_ctrl.humidity_percent <= g_purge_ctrl.run_exit_humidity_percent) &&
+          (((g_purge_ctrl.gas_type == N2) &&
+            (g_purge_ctrl.o2_valid != 0U) &&
+            (g_purge_ctrl.o2_percent <= g_purge_ctrl.run_enter_o2_percent)) ||
+           (g_purge_ctrl.gas_type == XCDA)))))
     {
         (void)now_ms;
         if (g_purge_ctrl.cavity == POD)
