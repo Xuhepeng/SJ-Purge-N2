@@ -144,6 +144,16 @@ void PurgeControl_Stop(void)
     PurgeControl_EnterStandby();
 }
 
+/* 强制回到 INIT，供 HCS HOME 使用 */
+void PurgeControl_Home(void)
+{
+    g_purge_ctrl.fault_code = 0UL;
+    PurgeControl_ApplySafeOutputs();
+    PurgeControl_ClearCommands();
+    g_purge_ctrl.state = PURGE_CTRL_STATE_INIT;
+    g_purge_ctrl.state_enter_tick = HAL_GetTick();
+}
+
 /* 主机发 RESET 后，只是先置位复位命令标志 */
 void PurgeControl_ResetFault(void)
 {

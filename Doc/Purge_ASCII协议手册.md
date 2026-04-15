@@ -88,7 +88,7 @@ FSD=0 STATUS=xx MODE=xx FAULT=xx CYCLE=xx<CR><LF>
   Function Status Data，表示状态查询结果，`0` 对应运行状态查询。
 - `STATUS`
   当前状态机状态。
-  建议取值：`INIT`、`SELF_CHECK`、`STANDBY`、`FILL`、`RUN`、`FAULT`。
+  建议取值：`INIT`、`SELF_CHECK`、`STANDBY`、`FILL`、`STABILIZE`、`RUN`、`FAULT`。
 - `MODE`
   当前工作腔体。
   取值：`POD` 或 `MICRO`。
@@ -148,7 +148,7 @@ FSR FC=2<CR><LF>
 ### 应答
 
 ```text
-FSD=2 FILLFLOW=80.00 RUNFLOW=50.00 TARGETO2=5.00 TARGETHUMI=10.00 POS_PRESS_MAX=7.00 POS_PRESS_MIN=5.00 NEG_PRESS_MAX=-0.70 NEG_PRESS_MIN=-0.90 EXTERNAL_OUTPUT=0 GAS_TYPE=N2<CR><LF>
+FSD=2 FILLFLOW=80.00 RUNFLOW=20.00 TARGETO2=5.00 TARGETHUMI=10.00 POS_PRESS_MAX=7.00 POS_PRESS_MIN=5.00 NEG_PRESS_MAX=-0.03 NEG_PRESS_MIN=-0.90 FILL_TIME=300000 EXTERNAL_OUTPUT=0 GAS_TYPE=N2<CR><LF>
 ```
 
 字段说明：
@@ -179,6 +179,9 @@ FSD=2 FILLFLOW=80.00 RUNFLOW=50.00 TARGETO2=5.00 TARGETHUMI=10.00 POS_PRESS_MAX=
 - `NEG_PRESS_MIN`
   负压下限。
   单位：`Bar`。
+- `FILL_TIME`
+  FILL 阶段持续时间。
+  当前单位：`ms`。
 - `EXTERNAL_OUTPUT`
   外部输出开关状态。
   `0` 表示关闭，`1` 表示开启。
@@ -257,6 +260,26 @@ HCA XX<CR><LF>
 
 `XX` 取值：`OK`、`BUSY`、`ALARM`、`DENEID`。
 
+## 4.4 HOME
+
+### 请求
+
+```text
+HCS HOME<CR><LF>
+```
+
+### 含义
+
+强制设备回到 `INIT` 状态，并重新进入后续自检流程。
+
+### 应答
+
+```text
+HCA XX<CR><LF>
+```
+
+`XX` 当前取值为：`OK`。
+
 ## 5. 参数设置指令 Host -> Device
 
 ## 5.1 设置参数总格式
@@ -292,6 +315,9 @@ ECS XX=Data<CR><LF>
   负压上限。
 - `NEG_PRESS_MIN`
   负压下限。
+- `FILL_TIME`
+  FILL 阶段持续时间。
+  当前单位：`ms`。
 - `EXTERNAL_OUTPUT`
   外部输出开关。
 - `GAS_TYPE`
@@ -310,6 +336,7 @@ ECS XX=Data<CR><LF>
 
 ```text
 ECS FILLFLOW=80.00<CR><LF>
+ECS FILL_TIME=300000<CR><LF>
 ECS TARGETO2=5.00<CR><LF>
 ECS GAS_TYPE=N2<CR><LF>
 ```
@@ -363,6 +390,7 @@ ECR XX<CR><LF>
 - `POS_PRESS_MIN`
 - `NEG_PRESS_MAX`
 - `NEG_PRESS_MIN`
+- `FILL_TIME`
 - `EXTERNAL_OUTPUT`
 - `GAS_TYPE`
 
@@ -372,6 +400,7 @@ ECR XX<CR><LF>
 
 ```text
 ECR FILLFLOW<CR><LF>
+ECR FILL_TIME<CR><LF>
 ECR GAS_TYPE<CR><LF>
 ```
 
@@ -394,6 +423,7 @@ ECD XX=Data<CR><LF>
 
 ```text
 ECD FILLFLOW=80.00<CR><LF>
+ECD FILL_TIME=300000<CR><LF>
 ECD GAS_TYPE=XCDA<CR><LF>
 ```
 
@@ -532,6 +562,8 @@ AERS MSG<CR><LF>
   POD 腔体充气完成。
 - `STOP_PURGE`
   充气停止。
+- `CMPL_HOME`
+  HOME 指令执行完成，设备已切回 `INIT`。
 - `POWER_UP`
   设备上电。
 - `CMPL_SET`
@@ -542,6 +574,7 @@ AERS MSG<CR><LF>
 ```text
 AERS START_PURGE<CR><LF>
 AERS CMPL_PURGE_POD<CR><LF>
+AERS CMPL_HOME<CR><LF>
 AERS STOP_PURGE<CR><LF>
 ```
 
@@ -550,6 +583,7 @@ AERS STOP_PURGE<CR><LF>
 - 查询命令建议优先使用 `FSR FC=0`、`FSR FC=1`、`FSR FC=2` 验证设备状态、传感器和配置。
 - 控制命令建议先发 `HCS START_PURGE POD` 或 `HCS START_PURGE MICRO`，再观察 `AERS` 和 `ARS` 上报。
 - 使用 `ECS` 修改参数后，建议立刻用 `ECR` 或 `FSR FC=2` 做回读确认。
+- `ECS FILL_TIME=xx` 当前按毫秒处理，例如 `300000` 表示 300 秒。
 - 使用 `GAS_TYPE=XCDA` 时，上位机不应再用氧浓度作为完成判据。
 
 ## 11. 说明

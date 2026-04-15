@@ -17,9 +17,10 @@
  * 1. FSR FC=0/1/2
  * 2. HCS START_PURGE POD|MICRO
  * 3. HCS STOP_PURGE
- * 4. ECS XX=Data
- * 5. ECR XX
- * 6. EDER ON|OFF
+ * 4. HCS HOME
+ * 5. ECS XX=Data
+ * 6. ECR XX
+ * 7. EDER ON|OFF
  *
  * 模块额外负责：
  * 1. UART3 单字节中断接收
@@ -244,7 +245,7 @@ static void PurgeHostComm_HandleLine(PurgeHostComm_t *comm, const char *line)
  */
 static uint8_t PurgeHostComm_HandleAsciiProtocol(PurgeHostComm_t *comm, const char *line)
 {
-    char tx[192];
+    char tx[256];
     char work[128];
     char token1[32];
     char token2[32];
@@ -263,6 +264,7 @@ static uint8_t PurgeHostComm_HandleAsciiProtocol(PurgeHostComm_t *comm, const ch
     float backup_min_inlet_pressure_bar;
     float backup_max_outlet_pressure_bar;
     float backup_min_outlet_pressure_bar;
+    uint32_t backup_fill_time_ms;
     uint8_t backup_external_output_flag;
     Gas_Type_t backup_gas_type;
 
@@ -294,7 +296,7 @@ static uint8_t PurgeHostComm_HandleAsciiProtocol(PurgeHostComm_t *comm, const ch
         {
             (void)snprintf(tx,
                            sizeof(tx),
-                           "FSD=2 FILLFLOW=%.2f RUNFLOW=%.2f TARGETO2=%.2f TARGETHUMI=%.2f POS_PRESS_MAX=%.2f POS_PRESS_MIN=%.2f NEG_PRESS_MAX=%.2f NEG_PRESS_MIN=%.2f EXTERNAL_OUTPUT=%lu GAS_TYPE=%s\r\n",
+                           "FSD=2 FILLFLOW=%.2f RUNFLOW=%.2f TARGETO2=%.2f TARGETHUMI=%.2f POS_PRESS_MAX=%.2f POS_PRESS_MIN=%.2f NEG_PRESS_MAX=%.2f NEG_PRESS_MIN=%.2f FILL_TIME=%lu EXTERNAL_OUTPUT=%lu GAS_TYPE=%s\r\n",
                            (double)g_purge_ctrl.fill_flow_lpm,
                            (double)g_purge_ctrl.run_flow_lpm,
                            (double)g_purge_ctrl.run_enter_o2_percent,
@@ -303,6 +305,7 @@ static uint8_t PurgeHostComm_HandleAsciiProtocol(PurgeHostComm_t *comm, const ch
                            (double)g_purge_ctrl.min_inlet_pressure_bar,
                            (double)g_purge_ctrl.max_outlet_pressure_bar,
                            (double)g_purge_ctrl.min_outlet_pressure_bar,
+                           (unsigned long)g_purge_ctrl.fill_time_ms,
                            (unsigned long)g_purge_ctrl.external_output_flag,
                            (g_purge_ctrl.gas_type == XCDA) ? "XCDA" : "N2");
             PurgeHostComm_SendText(comm, tx);
@@ -320,6 +323,18 @@ static uint8_t PurgeHostComm_HandleAsciiProtocol(PurgeHostComm_t *comm, const ch
     token3[0] = '\0';
     if (sscanf(work, "HCS %31s %31s %31s", token1, token2, token3) >= 1)
     {
+        if (PurgeHostComm_Equals(token1, "HOME") != 0U)
+        {
+            PurgeControl_Home();
+            comm->ascii_purge_active = 0U;
+            PurgeHostComm_SendText(comm, "HCA OK\r\n");
+            if (comm->ascii_event_enable != 0U)
+            {
+                PurgeHostComm_SendText(comm, "AERS CMPL_HOME\r\n");
+            }
+            return 1U;
+        }
+
         if (PurgeHostComm_Equals(token1, "START_PURGE") != 0U)
         {
             /* 手册要求：参数缺失/未定义时返回 DENEID。 */
@@ -423,6 +438,7 @@ static uint8_t PurgeHostComm_HandleAsciiProtocol(PurgeHostComm_t *comm, const ch
         backup_min_inlet_pressure_bar = g_purge_ctrl.min_inlet_pressure_bar;
         backup_max_outlet_pressure_bar = g_purge_ctrl.max_outlet_pressure_bar;
         backup_min_outlet_pressure_bar = g_purge_ctrl.min_outlet_pressure_bar;
+        backup_fill_time_ms = g_purge_ctrl.fill_time_ms;
         backup_external_output_flag = g_purge_ctrl.external_output_flag;
         backup_gas_type = g_purge_ctrl.gas_type;
 
@@ -475,6 +491,12 @@ static uint8_t PurgeHostComm_HandleAsciiProtocol(PurgeHostComm_t *comm, const ch
             g_purge_ctrl.min_outlet_pressure_bar = float_value;
             set_ok = 1U;
         }
+        else if ((PurgeHostComm_Equals(key, "FILL_TIME") != 0U) &&
+                 (PurgeHostComm_TryParseUint32(value, &uint_value) != 0U))
+        {
+            g_purge_ctrl.fill_time_ms = uint_value;
+            set_ok = 1U;
+        }
         else if ((PurgeHostComm_Equals(key, "EXTERNAL_OUTPUT") != 0U) &&
                  (PurgeHostComm_TryParseUint32(value, &uint_value) != 0U))
         {
@@ -514,6 +536,7 @@ static uint8_t PurgeHostComm_HandleAsciiProtocol(PurgeHostComm_t *comm, const ch
                 g_purge_ctrl.min_inlet_pressure_bar = backup_min_inlet_pressure_bar;
                 g_purge_ctrl.max_outlet_pressure_bar = backup_max_outlet_pressure_bar;
                 g_purge_ctrl.min_outlet_pressure_bar = backup_min_outlet_pressure_bar;
+                g_purge_ctrl.fill_time_ms = backup_fill_time_ms;
                 g_purge_ctrl.external_output_flag = backup_external_output_flag;
                 g_purge_ctrl.gas_type = backup_gas_type;
                 PurgeHostComm_SendText(comm, "ECA DENEID\r\n");
@@ -568,6 +591,10 @@ static uint8_t PurgeHostComm_HandleAsciiProtocol(PurgeHostComm_t *comm, const ch
         else if (PurgeHostComm_Equals(key, "NEG_PRESS_MIN") != 0U)
         {
             (void)snprintf(tx, sizeof(tx), "ECD NEG_PRESS_MIN=%.2f\r\n", (double)g_purge_ctrl.min_outlet_pressure_bar);
+        }
+        else if (PurgeHostComm_Equals(key, "FILL_TIME") != 0U)
+        {
+            (void)snprintf(tx, sizeof(tx), "ECD FILL_TIME=%lu\r\n", (unsigned long)g_purge_ctrl.fill_time_ms);
         }
         else if (PurgeHostComm_Equals(key, "EXTERNAL_OUTPUT") != 0U)
         {

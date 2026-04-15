@@ -172,6 +172,7 @@ void PurgeControl_Start(void);
 void PurgeControl_PodCavity(void);
 void PurgeControl_MicroCavity(void);
 void PurgeControl_Stop(void);
+void PurgeControl_Home(void);
 void PurgeControl_ResetFault(void);
 
 /* 强制退回待机态 */

@@ -62,6 +62,7 @@ typedef struct
     float min_inlet_pressure_bar;
     float max_outlet_pressure_bar;
     float min_outlet_pressure_bar;
+    uint32_t fill_time_ms;
 
     uint32_t external_output_flag;
     uint32_t gas_type;
@@ -215,6 +216,7 @@ static void PurgeConfigStore_FillImage(PurgeConfigStoreImage_t *image)
     image->min_inlet_pressure_bar = g_purge_ctrl.min_inlet_pressure_bar;
     image->max_outlet_pressure_bar = g_purge_ctrl.max_outlet_pressure_bar;
     image->min_outlet_pressure_bar = g_purge_ctrl.min_outlet_pressure_bar;
+    image->fill_time_ms = g_purge_ctrl.fill_time_ms;
     image->external_output_flag = (g_purge_ctrl.external_output_flag != 0U) ? 1UL : 0UL;
     image->gas_type = (uint32_t)g_purge_ctrl.gas_type;
 
@@ -237,6 +239,7 @@ static void PurgeConfigStore_ApplyImage(const PurgeConfigStoreImage_t *image)
     g_purge_ctrl.min_inlet_pressure_bar = image->min_inlet_pressure_bar;
     g_purge_ctrl.max_outlet_pressure_bar = image->max_outlet_pressure_bar;
     g_purge_ctrl.min_outlet_pressure_bar = image->min_outlet_pressure_bar;
+    g_purge_ctrl.fill_time_ms = image->fill_time_ms;
     g_purge_ctrl.external_output_flag = (uint8_t)((image->external_output_flag != 0U) ? 1U : 0U);
     g_purge_ctrl.gas_type = (image->gas_type == (uint32_t)XCDA) ? XCDA : N2;
 }
