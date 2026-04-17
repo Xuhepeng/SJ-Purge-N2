@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "Purge_Version.h"
 #include "usart.h"
 
 /*
@@ -154,11 +155,12 @@ void PurgeHostComm_SendStatus(PurgeHostComm_t *comm)
     mode = (g_purge_ctrl.cavity == POD) ? "POD" : "MICRO";
     (void)snprintf(tx,
                    sizeof(tx),
-                   "FSD=0 STATUS=%s MODE=%s FAULT=0x%08lX CYCLE=%lu\r\n",
+                   "FSD=0 STATUS=%s MODE=%s FAULT=0x%08lX CYCLE=%lu VER=%s\r\n",
                    PurgeControl_GetStateName(g_purge_ctrl.state),
                    mode,
                    (unsigned long)g_purge_ctrl.fault_code,
-                   (unsigned long)g_purge_ctrl.cycle_counter);
+                   (unsigned long)g_purge_ctrl.cycle_counter,
+                   PURGE_FW_VERSION_STR);
 
     PurgeHostComm_SendText(comm, tx);
 }

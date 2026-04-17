@@ -79,7 +79,7 @@ FSR FC=0<CR><LF>
 ### 应答
 
 ```text
-FSD=0 STATUS=xx MODE=xx FAULT=xx CYCLE=xx<CR><LF>
+FSD=0 STATUS=xx MODE=xx FAULT=xx CYCLE=xx VER=xx<CR><LF>
 ```
 
 字段说明：
@@ -96,6 +96,15 @@ FSD=0 STATUS=xx MODE=xx FAULT=xx CYCLE=xx<CR><LF>
   当前故障码，建议使用十六进制字符串表示。
 - `CYCLE`
   当前已执行的 purge 流程计数。
+- `VER`
+  当前固件版本号。
+  当前格式示例：`1.0.0+g1a2b3c4 2026-04-17 16:20:00`。
+
+### 示例
+
+```text
+FSD=0 STATUS=STANDBY MODE=POD FAULT=0x00000000 CYCLE=12 VER=1.0.0+g1a2b3c4 2026-04-17 16:20:00<CR><LF>
+```
 
 ## 3.3 FC=1 查询传感器数据
 

@@ -697,7 +697,7 @@
             <name>BUILDACTION</name>
             <archiveVersion>1</archiveVersion>
             <data>
-                <prebuild></prebuild>
+                <prebuild>powershell.exe -ExecutionPolicy Bypass -File "$PROJ_DIR$\generate_version_header.ps1"</prebuild>
                 <postbuild></postbuild>
             </data>
         </settings>
