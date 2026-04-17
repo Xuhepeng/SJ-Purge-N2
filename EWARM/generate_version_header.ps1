@@ -5,7 +5,6 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $outFile = Join-Path $repoRoot "APP\\Inc\\Purge_Version_Generated.h"
 
 $gitSha = "gnogit"
-$dirtySuffix = ""
 $buildTime = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
 
 $gitCmd = Get-Command git -ErrorAction SilentlyContinue
@@ -18,17 +17,10 @@ if ($null -ne $gitCmd)
         {
             $gitSha = "g$rev"
         }
-
-        $status = (& git -C $repoRoot status --porcelain --untracked-files=no)
-        if (($LASTEXITCODE -eq 0) -and (-not [string]::IsNullOrWhiteSpace(($status | Out-String))))
-        {
-            $dirtySuffix = "-dirty"
-        }
     }
     catch
     {
         $gitSha = "gnogit"
-        $dirtySuffix = ""
     }
 }
 
@@ -36,7 +28,7 @@ $header = @"
 #ifndef __PURGE_VERSION_GENERATED_H
 #define __PURGE_VERSION_GENERATED_H
 
-#define PURGE_FW_GIT_SHA "$gitSha$dirtySuffix"
+#define PURGE_FW_GIT_SHA "$gitSha"
 #define PURGE_FW_BUILD_TIME "$buildTime"
 
 #endif /* __PURGE_VERSION_GENERATED_H */
