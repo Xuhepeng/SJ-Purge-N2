@@ -34,6 +34,8 @@ static PurgeHostComm_t *s_host_comm = 0;
 
 /* 处理一整行主机发送的 ASCII 报文。 */
 static void PurgeHostComm_HandleLine(PurgeHostComm_t *comm, const char *line);
+/* 判断一行文本是否更像设备自身发出的回包/事件回显，命中后直接忽略。 */
+static uint8_t PurgeHostComm_IsDeviceEchoLine(const char *line);
 /* 发送一段完整 ASCII 文本到 UART3。 */
 static void PurgeHostComm_SendText(PurgeHostComm_t *comm, const char *text);
 /* 发送内部诊断错误，如行过长。 */
@@ -221,10 +223,21 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     }
 }
 
-/* 处理一整行命令；无法识别时统一回 HCA DENEID。 */
+/*
+ * 处理一整行命令。
+ *
+ * 额外保护：
+ * 如果这一行看起来像设备自己发出的回包/事件被串口链路回显回来，
+ * 则直接忽略，不再把它当成新的主机命令，也不回 HCA DENEID。
+ */
 static void PurgeHostComm_HandleLine(PurgeHostComm_t *comm, const char *line)
 {
     if ((comm == 0) || (line == 0))
+    {
+        return;
+    }
+
+    if (PurgeHostComm_IsDeviceEchoLine(line) != 0U)
     {
         return;
     }
@@ -233,6 +246,47 @@ static void PurgeHostComm_HandleLine(PurgeHostComm_t *comm, const char *line)
     {
         PurgeHostComm_SendText(comm, "HCA DENEID\r\n");
     }
+}
+
+/*
+ * 判断收到的一行文本是否是“设备自己发出的内容被回显回来”。
+ *
+ * 触发场景举例：
+ * 1. 串口工具打开了本地回显
+ * 2. 上位机把设备回包又写回了串口
+ * 3. 485 链路存在本地回环
+ *
+ * 这些报文前缀本来就是设备 -> 主机方向，
+ * 如果又从接收口回到设备侧，就不应该再参与主机命令解析。
+ */
+static uint8_t PurgeHostComm_IsDeviceEchoLine(const char *line)
+{
+    const char *text;
+
+    if (line == 0)
+    {
+        return 0U;
+    }
+
+    text = line;
+    while ((*text != '\0') && (isspace((unsigned char)*text) != 0))
+    {
+        text++;
+    }
+
+    if ((strncmp(text, "HCA ", 4) == 0) ||
+        (strncmp(text, "FSD=", 4) == 0) ||
+        (strncmp(text, "ECA ", 4) == 0) ||
+        (strncmp(text, "ECD ", 4) == 0) ||
+        (strncmp(text, "EERA ", 5) == 0) ||
+        (strncmp(text, "AERS ", 5) == 0) ||
+        (strncmp(text, "ARS ", 4) == 0) ||
+        (strncmp(text, "ERR:", 4) == 0))
+    {
+        return 1U;
+    }
+
+    return 0U;
 }
 
 /*

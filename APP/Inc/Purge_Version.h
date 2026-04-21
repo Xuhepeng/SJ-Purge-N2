@@ -9,7 +9,7 @@ extern "C" {
 #define PURGE_FW_VERSION_MINOR 0U
 #define PURGE_FW_VERSION_PATCH 0U
 
-#define PURGE_FW_VERSION_BASE_STR "1.0.0"
+#define PURGE_FW_VERSION_BASE_STR "1.0.1"
 
 #include "Purge_Version_Generated.h"
 
