@@ -25,7 +25,7 @@
  *
  * 模块额外负责：
  * 1. UART3 单字节中断接收
- * 2. 基于 CR/LF 或空闲超时的行收帧
+ * 2. 基于 "\r\n" 结束符的整行收帧
  * 3. 事件 AERS 与报警 ARS 主动上报
  */
 
@@ -36,6 +36,8 @@ static PurgeHostComm_t *s_host_comm = 0;
 static void PurgeHostComm_HandleLine(PurgeHostComm_t *comm, const char *line);
 /* 判断一行文本是否更像设备自身发出的回包/事件回显，命中后直接忽略。 */
 static uint8_t PurgeHostComm_IsDeviceEchoLine(const char *line);
+/* 判断一行文本是否至少具备“主机命令前缀”特征。 */
+static uint8_t PurgeHostComm_IsHostCommandPrefixLine(const char *line);
 /* 发送一段完整 ASCII 文本到 UART3。 */
 static void PurgeHostComm_SendText(PurgeHostComm_t *comm, const char *text);
 /* 发送内部诊断错误，如行过长。 */
@@ -63,6 +65,8 @@ static void PurgeHostComm_RingPushIsr(PurgeHostComm_t *comm, uint8_t byte);
 /* 结束当前行并交给协议层处理。 */
 static void PurgeHostComm_FinalizeLine(PurgeHostComm_t *comm);
 
+#define PURGE_HOSTCOMM_POD_N2_DONE_DELAY_MS 120000U
+
 /* 初始化通信上下文并启动 UART3 接收。 */
 void PurgeHostComm_Init(PurgeHostComm_t *comm)
 {
@@ -73,7 +77,6 @@ void PurgeHostComm_Init(PurgeHostComm_t *comm)
 
     memset(comm, 0, sizeof(*comm));
 
-    comm->frame_idle_timeout_ms = 30U;
     comm->ascii_event_enable = 1U;
     comm->ascii_power_up_pending = 1U;
 
@@ -90,10 +93,9 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
     }
 }
 
-/* 主循环入口：处理接收缓存、空闲收帧、报警和事件上报。 */
+/* 主循环入口：处理接收缓存、报警和事件上报。 */
 void PurgeHostComm_Process(PurgeHostComm_t *comm)
 {
-    uint32_t now_ms;
     uint8_t rx_byte;
 
     if (comm == 0)
@@ -106,18 +108,17 @@ void PurgeHostComm_Process(PurgeHostComm_t *comm)
         PurgeHostComm_FeedByte(comm, rx_byte);
     }
 
-    now_ms = HAL_GetTick();
-    if ((comm->line_len > 0U) &&
-        ((now_ms - comm->last_rx_tick) >= comm->frame_idle_timeout_ms))
-    {
-        PurgeHostComm_FinalizeLine(comm);
-    }
-
     PurgeHostComm_ProcessAsciiAlarms(comm);
-    PurgeHostComm_ProcessAsciiEvents(comm, now_ms);
+    PurgeHostComm_ProcessAsciiEvents(comm, HAL_GetTick());
 }
 
-/* 按字节收帧：遇到 CR/LF 立即结束一帧，否则继续缓存。 */
+/*
+ * 按字节收帧：仅当收到完整的 "\r\n" 结束符时，才结束一帧。
+ *
+ * 设计目的：
+ * 1. 仅在收到完整 "\r\n" 时才结束一帧
+ * 2. 避免单独收到 '\r' 或 '\n' 时把半截命令误当成完整一帧
+ */
 void PurgeHostComm_FeedByte(PurgeHostComm_t *comm, uint8_t byte)
 {
     if (comm == 0)
@@ -125,13 +126,23 @@ void PurgeHostComm_FeedByte(PurgeHostComm_t *comm, uint8_t byte)
         return;
     }
 
-    comm->last_rx_tick = HAL_GetTick();
-
-    if ((byte == '\r') || (byte == '\n'))
+    if (byte == '\r')
     {
-        PurgeHostComm_FinalizeLine(comm);
+        comm->rx_prev_was_cr = 1U;
         return;
     }
+
+    if (byte == '\n')
+    {
+        if (comm->rx_prev_was_cr != 0U)
+        {
+            PurgeHostComm_FinalizeLine(comm);
+        }
+        comm->rx_prev_was_cr = 0U;
+        return;
+    }
+
+    comm->rx_prev_was_cr = 0U;
 
     if (comm->line_len >= (uint16_t)(sizeof(comm->line_buf) - 1U))
     {
@@ -229,6 +240,10 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
  * 额外保护：
  * 如果这一行看起来像设备自己发出的回包/事件被串口链路回显回来，
  * 则直接忽略，不再把它当成新的主机命令，也不回 HCA DENEID。
+ *
+ * 再进一步：
+ * 如果这一行连主机协议前缀都不像（例如乱码、残包、噪声、半截回显），
+ * 也直接忽略，避免这些脏数据触发误判 DENEID。
  */
 static void PurgeHostComm_HandleLine(PurgeHostComm_t *comm, const char *line)
 {
@@ -238,6 +253,11 @@ static void PurgeHostComm_HandleLine(PurgeHostComm_t *comm, const char *line)
     }
 
     if (PurgeHostComm_IsDeviceEchoLine(line) != 0U)
+    {
+        return;
+    }
+
+    if (PurgeHostComm_IsHostCommandPrefixLine(line) == 0U)
     {
         return;
     }
@@ -282,6 +302,42 @@ static uint8_t PurgeHostComm_IsDeviceEchoLine(const char *line)
         (strncmp(text, "AERS ", 5) == 0) ||
         (strncmp(text, "ARS ", 4) == 0) ||
         (strncmp(text, "ERR:", 4) == 0))
+    {
+        return 1U;
+    }
+
+    return 0U;
+}
+
+/*
+ * 判断收到的一行文本是否具备主机命令前缀。
+ *
+ * 只有这些前缀才属于“主机 -> 设备”的合法协议入口：
+ * FSR / HCS / ECS / ECR / EDER
+ *
+ * 这样做的目的不是放宽协议，而是减少乱码、残包、噪声造成的误报码。
+ * 对真正像主机命令的输入，后面仍然会继续做严格解析并在必要时返回 DENEID。
+ */
+static uint8_t PurgeHostComm_IsHostCommandPrefixLine(const char *line)
+{
+    const char *text;
+
+    if (line == 0)
+    {
+        return 0U;
+    }
+
+    text = line;
+    while ((*text != '\0') && (isspace((unsigned char)*text) != 0))
+    {
+        text++;
+    }
+
+    if ((strncmp(text, "FSR ", 4) == 0) ||
+        (strncmp(text, "HCS ", 4) == 0) ||
+        (strncmp(text, "ECS ", 4) == 0) ||
+        (strncmp(text, "ECR ", 4) == 0) ||
+        (strncmp(text, "EDER ", 5) == 0))
     {
         return 1U;
     }
@@ -383,6 +439,7 @@ static uint8_t PurgeHostComm_HandleAsciiProtocol(PurgeHostComm_t *comm, const ch
         {
             PurgeControl_Home();
             comm->ascii_purge_active = 0U;
+            comm->ascii_done_qualify_tick = 0U;
             PurgeHostComm_SendText(comm, "HCA OK\r\n");
             if (comm->ascii_event_enable != 0U)
             {
@@ -414,6 +471,7 @@ static uint8_t PurgeHostComm_HandleAsciiProtocol(PurgeHostComm_t *comm, const ch
                 PurgeControl_PodCavity();
                 PurgeControl_Start();
                 comm->ascii_purge_active = 1U;
+                comm->ascii_done_qualify_tick = 0U;
                 PurgeHostComm_SendText(comm, "HCA OK\r\n");
                 if (comm->ascii_event_enable != 0U)
                 {
@@ -426,6 +484,7 @@ static uint8_t PurgeHostComm_HandleAsciiProtocol(PurgeHostComm_t *comm, const ch
                 PurgeControl_MicroCavity();
                 PurgeControl_Start();
                 comm->ascii_purge_active = 1U;
+                comm->ascii_done_qualify_tick = 0U;
                 PurgeHostComm_SendText(comm, "HCA OK\r\n");
                 if (comm->ascii_event_enable != 0U)
                 {
@@ -451,6 +510,7 @@ static uint8_t PurgeHostComm_HandleAsciiProtocol(PurgeHostComm_t *comm, const ch
                 /* 停止后同步结束本次 purge 跟踪。 */
                 PurgeControl_Stop();
                 comm->ascii_purge_active = 0U;
+                comm->ascii_done_qualify_tick = 0U;
                 PurgeHostComm_SendText(comm, "HCA OK\r\n");
                 if (comm->ascii_event_enable != 0U)
                 {
@@ -787,6 +847,8 @@ static void PurgeHostComm_ProcessAsciiAlarms(PurgeHostComm_t *comm)
  */
 static void PurgeHostComm_ProcessAsciiEvents(PurgeHostComm_t *comm, uint32_t now_ms)
 {
+    uint8_t quality_ready;
+
     if (comm == 0)
     {
         return;
@@ -806,6 +868,7 @@ static void PurgeHostComm_ProcessAsciiEvents(PurgeHostComm_t *comm, uint32_t now
 
     if (comm->ascii_purge_active == 0U)
     {
+        comm->ascii_done_qualify_tick = 0U;
         return;
     }
 
@@ -814,6 +877,8 @@ static void PurgeHostComm_ProcessAsciiEvents(PurgeHostComm_t *comm, uint32_t now
     {
         return;
     }
+
+    quality_ready = 0U;
 
     /*
      * 完成事件与控制层判据保持一致：
@@ -833,19 +898,49 @@ static void PurgeHostComm_ProcessAsciiEvents(PurgeHostComm_t *comm, uint32_t now
             (g_purge_ctrl.o2_percent <= g_purge_ctrl.run_enter_o2_percent)) ||
            (g_purge_ctrl.gas_type == XCDA)))))
     {
-        (void)now_ms;
-        if (g_purge_ctrl.cavity == POD)
+        quality_ready = 1U;
+    }
+
+    if (quality_ready == 0U)
+    {
+        comm->ascii_done_qualify_tick = 0U;
+        return;
+    }
+
+    /*
+     * POD + N2 模式下，O2 和湿度首次同时达标后，再连续保持 2 分钟才上报完成。
+     * 只要中途任一条件失效，就清零计时并重新开始。
+     */
+    if ((g_purge_ctrl.cavity == POD) && (g_purge_ctrl.gas_type == N2))
+    {
+        if (comm->ascii_done_qualify_tick == 0U)
         {
-            PurgeHostComm_SendText(comm, "AERS CMPL_PURGE_POD\r\n");
-        }
-        else
-        {
-            PurgeHostComm_SendText(comm, "AERS CMPL_PURGE_MIC\r\n");
+            comm->ascii_done_qualify_tick = now_ms;
+            return;
         }
 
-        comm->ascii_last_done_cycle = g_purge_ctrl.cycle_counter;
-        comm->ascii_purge_active = 0U;
+        if ((now_ms - comm->ascii_done_qualify_tick) < PURGE_HOSTCOMM_POD_N2_DONE_DELAY_MS)
+        {
+            return;
+        }
     }
+    else
+    {
+        comm->ascii_done_qualify_tick = 0U;
+    }
+
+    if (g_purge_ctrl.cavity == POD)
+    {
+        PurgeHostComm_SendText(comm, "AERS CMPL_PURGE_POD\r\n");
+    }
+    else
+    {
+        PurgeHostComm_SendText(comm, "AERS CMPL_PURGE_MIC\r\n");
+    }
+
+    comm->ascii_last_done_cycle = g_purge_ctrl.cycle_counter;
+    comm->ascii_purge_active = 0U;
+    comm->ascii_done_qualify_tick = 0U;
 }
 
 /* 底层发送函数：统一做空指针、空串和统计处理。 */

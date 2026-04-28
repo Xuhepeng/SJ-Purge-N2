@@ -9,28 +9,16 @@ extern "C" {
 
 #include "Purge_Control.h"
 
-/* UART3 接收环形缓冲区大小。 */
 #define PURGE_HOSTCOMM_RING_SIZE 256U
 
-/*
- * 主机通信上下文。
- *
- * 该结构体由主循环持有，负责完成以下职责：
- * 1. UART3 字节接收与环形缓冲缓存
- * 2. 一行 ASCII 命令的拼包
- * 3. 协议统计信息记录
- * 4. 事件/报警上报状态保持
- */
 typedef struct
 {
-    /* 当前正在拼接的一行 ASCII 报文缓存。 */
+    /* 当前正在拼接的一行 ASCII 命令缓存。 */
     uint8_t line_buf[128];
     /* line_buf 当前有效长度。 */
     uint16_t line_len;
-    /* 最近一次收到字节的系统时刻，用于空闲超时收帧。 */
-    uint32_t last_rx_tick;
-    /* 报文帧空闲超时，超过该时间认为一帧结束。 */
-    uint32_t frame_idle_timeout_ms;
+    /* 最近一个收到的字节是否为 '\r'，用于识别 CRLF 结束符。 */
+    uint8_t rx_prev_was_cr;
 
     /* UART ISR 写入、主循环读取的环形缓冲区。 */
     uint8_t ring_buf[PURGE_HOSTCOMM_RING_SIZE];
@@ -55,6 +43,8 @@ typedef struct
 
     /* 当前是否处于一次 purge 流程的跟踪周期内。 */
     uint8_t ascii_purge_active;
+    /* POD + N2 完成条件首次满足的时刻，用于延迟上报完成事件。 */
+    uint32_t ascii_done_qualify_tick;
     /* 上一次已上报完成事件的 cycle 号，用于避免重复上报。 */
     uint32_t ascii_last_done_cycle;
     /* 上一次已上报的 fault_code 快照，用于只上报新增故障。 */
@@ -64,19 +54,12 @@ typedef struct
     uint8_t uart_rx_byte;
 } PurgeHostComm_t;
 
-/* 初始化主机通信模块，并启动 UART3 单字节中断接收。 */
 void PurgeHostComm_Init(PurgeHostComm_t *comm);
-/* 在主循环中周期调用，处理接收、命令解析、事件与报警上报。 */
 void PurgeHostComm_Process(PurgeHostComm_t *comm);
-/* 喂入单个接收字节，完成按行组帧。 */
 void PurgeHostComm_FeedByte(PurgeHostComm_t *comm, uint8_t byte);
-/* 发送 FC=0 状态查询应答。 */
 void PurgeHostComm_SendStatus(PurgeHostComm_t *comm);
-/* 发送 FC=1 传感器查询应答。 */
 void PurgeHostComm_SendSensors(PurgeHostComm_t *comm);
-/* 启动 UART3 1 字节中断接收。 */
 void PurgeHostComm_StartUart3RxIT(PurgeHostComm_t *comm);
-/* UART3 接收完成回调入口，由 HAL 回调间接调用。 */
 void PurgeHostComm_OnUart3RxCplt(void);
 
 #ifdef __cplusplus
